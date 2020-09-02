@@ -115,10 +115,10 @@ With the project created, we can now start building our solution.
 The business process will collect and carry data through the execution of the process. This data is stored in a data model or domain model.
 
 . In your project, click on the _Add Asset_ button in the middle of the screen.
+
 image::image/image-2020-09-01-08-17-43-292.png[]
 . In the drop-down menu in the upper-left corner, select `Model`. Click on the _Data Object_ tile.
-+
-image:images/add_asset_model.jpg[]
+
 . Give the _Data Object_ the name `LoanApplicant`. Leave the package set to default.
 +
 image::image/image-2020-09-01-08-17-43-292.png[]
