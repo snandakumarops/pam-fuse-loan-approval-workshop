@@ -143,7 +143,7 @@ We will use the _Guided Decision Table_ asset.
 . Now go back to the asset library and click on _Add Asset_ button. Choose the Guided Decision Table option.
 
 +
-image::image/image-2020-09-01-09-27-53-802.png[1919,752]
+image::image/image-2020-09-01-09-27-53-802.png[guidedtabl,1919,752]
 +
 
 > Hit policies determine the order in which rules (rows) in a guided decision table are applied, whether top to bottom, per specified priority, or other options. 
