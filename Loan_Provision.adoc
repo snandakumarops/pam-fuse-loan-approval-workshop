@@ -3,22 +3,19 @@
 
 
 == Red Hat Process Automation Manager Workshop
-This workshop is aimed at providing hands on experience creating Decision and Process Assets. This lab will implement a Loan Approval workflow. 
+This workshop is aimed at providing hands on experience on the authoring and management platform for RHPAM. This lab will implement a Loan Approval workflow.
 
 .Goals
-* Define and create the process domain model using the platform's Data Modeller.
-* Create an Age Pre-Qualification Decision using Guided Rules
-* Create an Interest Calculation decision using XLS Decision table.
-* Create a Loan Pre-Qualification Decision using Guided Decision tables.
-* Create a Loan Approval workflow.
-* Create Task forms for human tasks.
-* Deploying and Management of the Loan Approval Process
+* Explore Users and Groups Management
+* Create a simple Loan Approval Workflow
+* Explore Process Admin Operations (Dashboards, SLAs, Assignments, Ressignments)
+* Explore Task Inbox (User Task Approval)
+* Real-Time Process and Task Monitoring
 
-
-.Prerequisite
+.Prerequisite (Note: the last section of this workshop showcases how the process data can be visualized in a external reporting system like Kibana. If using a local install, you need to connect RHPAM to an elastic instance. Check link:https://developers.redhat.com/blog/2020/05/04/monitor-business-metrics-with-red-hat-process-automation-manager-elasticsearch-and-kibana/[Process Insights with Kibana])
 * Successful completion of the _Environment Setup Lab_
 or
-* An existing, accessible, DM/PAM 7.3+ environment.
+* An existing, accessible, DM/PAM 7.5+ environment.
 
 :numbered:
 
@@ -26,8 +23,72 @@ or
 In this lab we will create an Loan Approval process.
 
 * Customer initiates the Loan Approval request. 
-* Age and Pre Qualification checks are applied to the loan request.
-* If the pre-qualification was succesful, then the request is assigned to a loan manager for approval.
+* Pre Qualification checks are applied to the loan request.
+* If the pre-qualification was succesful, then a suitable loan agent group is identified, the loan request is then assigned to them for approval.
+
+== Users and Groups
+In order to demonstrate the assignment and reassignment features, we will set up 3 sample groups and some users.
+First, login to Business Central using the credentials provided.On the top right you will see an option for the settings view.
+
+image::image/add_asset.jpg[]
+
+. Now click on the option for `Users`
+
+. We will create 4 users. For creating a new user, click on the `New User` option.
++
+image::image/image-2020-08-31-15-59-38-519.png[]
+. Proceed with the wizard. Enter the username as `Mary`, then proceed on to add  role to user as below.
++
+image::image/image-2020-08-31-16-00-57-889.png[]
++
+image::image/image-2020-08-31-16-04-01-536.png[]
+
+. Now choose, the role as `user`.
++
+image::image/image-2020-08-31-16-05-04-864.png[]
+
++
+. Now click on the `Create` button.
+. Finally set a password `redhatpam1!` for the user.
++
+image::image/image-2020-09-01-07-26-15-468.png[]
++
+. Let us now repeat the same process to create 3 more users.
++
+|===========
+
+|Username|Password
+|Robert|redhatpam1!
+|Patricia|redhatpam1!
+|John|redhatpam1!
+|===========
++
+Finally you will see the following users.
++
+image::image/image-2020-09-01-08-01-51-864.png[]
+. Now let us create 3 groups. For this click on the groups tab as shown in the image.
++
+image::image/image-2020-09-01-08-02-58-384.png[]
++
+. Click on the `New Group` option. Provide a name for the group `seniorUserAgent.
++
+image::image/image-2020-09-01-08-04-32-270.png[]
++
+. Now you should see the list of users, show up. Choose the user `John` and click on `Add Selected User`.
++
+image::image/image-2020-09-01-08-05-54-905.png[]
+. Repeat the same process to create two more groups.
++
+|===========
+
+|Group Name|Users
+|nonResidentGroup| Patricia
+|loanAgent| Mary, Robert
+|===========
+. Finally you should see the following groups.
++
+image::image/image-2020-09-01-08-09-15-230.png[]
+
 
 == Create a Project
 To define and deploy a business process, we first need to create a new project in which we can store the BPMN2 model, our domain model and the forms required for user interaction. To create a new project:
@@ -52,251 +113,28 @@ With the project created, we can now start building our solution.
 === The Domain Model
 
 The business process will collect and carry data through the execution of the process. This data is stored in a data model or domain model.
-In this lab, we collect two types of data:
-
-* `Applicant`: contains information about the Applicant, like age, credit score, monthly income etc.
-* `Loan`: contains information about the Loan request, like the loan duration and the Loan amount.
 
 . In your project, click on the _Add Asset_ button in the middle of the screen.
-+
-
-image:images/add_asset.jpg[]
+image::image/image-2020-09-01-08-17-43-292.png[]
 . In the drop-down menu in the upper-left corner, select `Model`. Click on the _Data Object_ tile.
 +
 image:images/add_asset_model.jpg[]
-. Give the _Data Object_ the name `Applicant`. Leave the package set to default.
+. Give the _Data Object_ the name `LoanApplicant`. Leave the package set to default.
 +
-image:images/data_obj_create.jpg[]
-. Add the following fields to the `Applicant` data object by clicking on the _+ add field_ button:
-+
+image::image/image-2020-09-01-08-17-43-292.png[]
 
-`Applicant`
-+
-|===========
-|Identifier|Label|Type
+. Add the following fields to the `LoanApplicant` data object by clicking on the `+ add field` button:
 
-|age|Age|Integer
-|creditScore|Credit Score|Integer
-|monthlyIncome|Monthly Income|Double
-|yearlyIncome|Yearly Income|Double
-|name|Name|String
-|===========
 +
-
-
-. When you've added the fields, save the data object by clicking on the _Save_ button in the top menu.
-After creation the `Applicant` Model should look like this.
-+
-image:images/applicant_overview.jpg[]
-
-. Use the _breadcrumb navigator at the top-left of the screen to navigate back to our `loan-approval` project.
-. Click on the blue _Add Asset_ button in the top-right corner and create a new _Data Object_. Give it the name `Loan`
-+
-image:images/loan_obj_create.jpg[]
-. Give the `Loan` object the following fields:
-+
-`Loan`
-+
-|===========
-|Identifier|Label|Type
-
-|amount|Amount|double
-|duration|Duration|Integer
-|interestRate|Interest Rate|Double
-|monthlyRepayment|Monthly Repayment|Double
-|agePreQual|Age PreQualification|boolean
-|loanPreQualification|Loan PreQualification|boolean
-|comment|comment|String
-
-|===========
-When you've added the fields, save the data object by clicking on the _Save_ button in the top menu.
-After creation the `Applicant` Model should look like this.
-+
-image:images/loan_obj_save.jpg[]
-+
-We're done creating our data model.
-+
-image:images/assets_lib.jpg[]
+image::image/image-2020-09-01-09-24-30-642.png[]
 
 We can now create the required decisions for our process.
 
 === Creating the Age Pre-Qualification Decision
 
-First let us create a simple Age Pre Qualification decision. The rule will do a simple check to ensure the Applicant's age is between 18 and 70.
+First let us create a simple Age Pre Qualification decision.
 
-. Click on the _Add Asset_ button and choose the `Guided Rule` asset. Name it `AgePreQualification`.
-+
-image:images/age_pre_qual_create.jpg[]
-+
-
-> . Guided Rules are suited for individual rules that can be created in a UI-based rule designer in Decision Central
-> . Provide fields and options for acceptable input
-> . Are optimal for creating single rules in a controlled format to minimize compilation errors
-+
-. When the Guided edior opens up, click on the + icon on the right corner of the editor screen.
-+
-image:images/guided_rule_step1.jpg[]
-+
-Let us first import the `Applicant` Object as below.
-+
-image:images/guided_rule_step2.jpg[]
-+
-. Now again click on the first green + icon as we did in the previous step and choose the `Loan` Object.
-+
-image:images/guided_rule_step3.jpg[]
-+
-We have imported the required input objects.
-+
-. Next, click on step 1
-
-+
-image:images/guided_rule_step4.jpg[]
-+
-. Select the _All of (And)_ option in the Multiple field constraint field.
-+
-image:images/guided_rule_step5.jpg[]
-+
-. Next we will add the conditions. For this click on the _all of the following:_ displayed below the `Applicant` Object.
-image:images/guided_rule_step6.jpg[]
-+
-. We will add the conditions now. We would need the age to be greater than 18 and less than 82. Let us do that by selecting age from the _Add a restriction on a field_ drop down.
-
-+
-image:images/guided_rule_step7.jpg[]
-
-+
-. This should add the age field on the editor
-Now select the _greater than_ option from the drop down and click on the small pencil icon next to the drop down.
-+
-image:images/guided_rule_step8.jpg[]
-+
-. We will enter 18 here to indicate the condition, similarly we will add a condition for less than 70 as well.
-
-+
-image:images/guided_rule_step9.jpg[]
-+
-. Next let us click on the 2nd Step which is _There is a Loan_. 
-+
-image:images/guided_rule_step11.jpg[]
-+
-. We will enter an alias for this Loan object as below and click on _Set_
-+
-image:images/guided_rule_step12.jpg[]
-+
-. Now we have finished defining all the conditions, let us now define the action. Let us click on the green icon to add the _Then_ clause.
-+
-image:images/guided_rule_step10.jpg[]
-+
-. Here we will select the option for _Change field values of Loan_
-+
-image:images/guided_rule_step13.jpg[]
-+
-. Next let us click on the pencil icon to tell the editor which field to choose. We will choose the field `agePreQual` and choose ok. Subsequently we again choose the pencil icon next to the field and set the value as true. Your result should look like below.
-+
-image:images/guided_rule_step14.jpg[]
-+
-. Finally we will do one last thing here, since the rules are going to orchestrated using a business process, we will provide it an identifier called _Rule Flow Group_. For this click on the _show options_ link.
-
-+
-image:images/guided_rule_step15.jpg[]
-+
-image:images/guided_rule_step16.jpg[]
-+
-. We will choose the attribute _ruleflow-group_ from the drop down and click on ok. We will enter `age_qualification` for the value of attribute.
-
-+
-image:images/guided_rule_step17.jpg[]
-+ 
-. We are all done now. We can now click on _Save_ to save the rule and clicking on _Validate_. This should end up being succesful.
-+
-
-. Next let us setup a test for testing this rule artifact. 
-+
-. For this go back to the asset library view, and choose the _Add Asset_ button. We will choose the artifact type _Test Scenario_. 
-+
-image:images/guided_rule_step18.jpg[]
-+
-. On the Test Scenario editor, we provide the _Given_ and the _Then_ clauses. On the right side pane we have the objects listed. Click on the Given Object type and choose the `Applicant` object from the right pane. We will choose the `age` field.
-+
-image:images/guided_rule_step19.jpg[]
-+
-. Now we will click on the `Applicant` column under _Given_ and using the context option add a new column to the right. Here, we will choose `Loan`. Finally click on the _Then_ column and add the object `Loan`. Here we will choose the field `agePreQual`. 
-+
-image:images/guided_rule_step20.jpg[]
-+
-image:images/guided_rule_step21.jpg[]
-+
-. Next let us inform the test editor which _Rule Flow Group_ we are testing with. For this click on the settings option from the right side pane.
-+
-image:images/guided_rule_step22.jpg[]
-+
-. Enter the value for the Rule Flow Group as `age_qualification`.
-+
-. Now we can add values to the various columns by editing the cells similar to spread sheet editing.
-+
-image:images/guided_rule_step23.jpg[]
-+
-. Once done, click on the _Test_ button to test the rules. As shown in the image above by clicking on the metrics option from the right side pane, we can see coverage reports show up as well. Finally save the artifact.
-
-Congratulations! We have now created our first artifact.
-
-=== Creating the Interest Calculation
-
-. We will now use another authoring format to create the Interest Rate Calculation table. 
-+
-
-> . Uploaded Decision tables are XLS or XLSX decision table spreadsheets that you upload into Decision Central
-> . Support template keys and values for creating rule templates
-> . Are optimal for creating rules in decision tables already managed outside of Decision Central
-Have strict syntax requirements for rules to be compiled properly when uploaded
-+
-Spreadsheets require two key areas that define rule data: a RuleSet area and a RuleTable area. The RuleSet area of the spreadsheet defines elements that you want to apply globally to all rules in the same package (not only the spreadsheet), such as a rule set name or universal rule attributes. The RuleTable area defines the actual rules (rows) and the conditions, actions, and other rule attributes (columns) that constitute that rule table within the specified rule set. A decision table spreadsheet can contain multiple RuleTable areas, but only one RuleSet area.
-
-. For the purpose of this excercise, you can download the template available here. 
-+
-link:resources/interest_rate_calculation.xls[Interest Rate calculation]
-
-+ 
-Your spread sheet should look like this. 
-+
-image:images/spread_sheet_1.jpg[]
-+
-. Let us now inspect the values. The ruleset section defines the _Rule Set name_, the _Rule Flow Group_ and import to specify the object which we will be making use of(which in this case is `Loan`).
-+
-The condition columns define the logic for identifying the Interest Rate. We also calculate the Monthly Repayment based on the amount.
-
-. Let us now define the values _RuleTable_ as below.  Edit the downloaded spread sheet and enter these values.
-+
-|===========
-|Min Amount|Max Amount|Duration(years)|Interest Rate
-
-||300000|7|0.47
-|300000|600000|7|0.70
-|600000||7|0.98
-||300000|10|0.72
-|300000|600000|10|0.90
-|600000||10|1.10
-
-||300000|20|1.25
-|300000|600000|20|1.39
-|600000||20|1.65
-
-|===========
-+
-Once done, we will upload it to Business Central
-. Now select the _Add Asset_ button from the asset libary page and choose Decision Table(Spreadsheet)
-
-+
-image:images/spread_sheet_2.jpg[]
-+
-
-select the file which we edited in the previous step. This should create the artifact succesfully.
-
-=== Creating the Loan Pre Qualification Decision
-
-Now we will do a Loan Pre Qualification check based on the loan amount, Debt Ratio and Credit Score. 
-
-We will now use the _Guided Decision Table_ asset.
+We will use the _Guided Decision Table_ asset.
 
 > . Guided Decison are rules that you create in a UI-based table designer in Decision Central
 > . Are a wizard-led alternative to uploaded decision table spreadsheets
@@ -305,7 +143,7 @@ We will now use the _Guided Decision Table_ asset.
 . Now go back to the asset library and click on _Add Asset_ button. Choose the Guided Decision Table option.
 
 +
-image:images/guided_dtable_1.jpg[]
+image::image/image-2020-09-01-09-27-53-802.png[]
 +
 
 > Hit policies determine the order in which rules (rows) in a guided decision table are applied, whether top to bottom, per specified priority, or other options. 
@@ -317,199 +155,235 @@ Guided Decision tables provide wizard based approach to defining condition and a
 On the Guided Decision Table editor click on the Columns Tab.
 +
 
-image:images/guided_dtable_2.jpg[]
+image::image/image-2020-09-01-09-28-55-803.png[]
 
 
-. First we will define a condition column to check for Min Loan Amount check. To Add a condition colum click on the _Insert Column_ button. This will open up the wizard. Choose the _Add a Condition_ option and click on _Next_
+. To Add a condition colum click on the _Insert Column_ button. This will open up the wizard. Choose the _Add a Condition_ option and click on _Next_
 +
-image:images/guided_dtable_3.jpg[]
+image::image/image-2020-09-01-09-29-49-943.png[]
+
 +
 
 First we need to import the data objects which we will be using for the rule. For this click on the _Create a new Fact Pattern_ button.
 +
-Choose the `Loan` type and provide a binding variable. This is required so that we can start defining condition and action columns based on the _Loan_ object.
+Choose the `LoanApplicant` type and provide a binding variable. This is required so that we can start defining condition and action columns based on the _LoanApplicant_ object.
 
 +
-image:images/guided_dtable_4.jpg[]
+
+image::image/image-2020-09-01-09-31-00-274.png[]
 +
 Next let us define the Calculation type, we will choose the _Literal Value_ and proceed.
 +
-image:images/guided_dtable_5.jpg[]
+image::image/image-2020-09-01-09-31-33-748.png[]
 +
-We will choose the amount field.
+We will choose the `age` field.
 +
-image:images/guided_dtable_6.jpg[]
+image::image/image-2020-09-01-09-32-17-242.png[]
 +
-Since we need to define the Min Amount check, we will choose the operation as `greater than` and proceed.
+Since we need to define the Min age check, we will choose the operation as `greater than` and proceed.
 +
-image:images/guided_dtable_7.jpg[]
+image::image/image-2020-09-01-09-32-52-538.png[]
 +
 Finally we will give the column a header name and save the column definition.
 +
-image:images/guided_dtable_8.jpg[]
-. Next we will define the Max Loan Amount column, repeat the same steps as above but choose the operation type as `less than` instead.
+image::image/image-2020-09-01-09-33-31-846.png[]
+. Next we will define the Max Age column, repeat the same steps as above but choose the operation type as `less than` instead. We will name this `Age < Than`
 +
-image:images/guided_dtable_20.jpg[]
+image::image/image-2020-09-01-09-34-22-468.png[]
 +
-. Next let us define the Debt ratio.
+. Next let us define the Credit Score.
 +
-Since Debt Ratio is a calculation based on the Applicant's data. We will need to import the `Applicant` type and create a binding.
+For this click on `Insert Column`, choose the `loanApplicant` fact pattern, and choose the calculation type as `Literal value` column name as `creditScore`
 +
-image:images/guided_dtable_9.jpg[]
+image::image/image-2020-09-01-09-39-52-940.png[]
 +
-image:images/guided_dtable_10.jpg[]
+We will choose the operator as `greater than`, proceed on to provide a header name and save.
 +
-We will use the _Predicate_ option and proceed.
+image::image/image-2020-09-01-09-41-07-073.png[]
+
+. Next we will define the check for `loanAmount`. For this click on `Insert Column`, choose the `loanApplicant` fact pattern, and choose the calculation type as `Literal value` column name as `loanAmount`
+We will choose the operator as `less than`, proceed on to provide a header name and save.
 +
-Enter the formula in the predicate field followed by `$param`. This will mean that
-the evaulation of the Formula provided will be checked against the condition defined on the column and will evaluate to True/False.
+image::image/image-2020-09-01-09-43-28-513.png[]
+. Finally let us create a column for `residency`.
+For this click on `Insert Column`, choose the `loanApplicant` fact pattern, and choose the calculation type as `Literal value` column name as `residency`
+We will choose the operator as `equal to`, proceed on to provide a header name and save.
 +
-The Debt ratio uses the `monthlyRepaymentAmount` as calculated in the XLS spread sheet decision table with this formula:
+image::image/image-2020-09-01-09-45-19-901.png[]
+
+. Now we will define the action column. For this click on `Insert Column`. Choose the option for `Set the value of field` and click next.
 +
-----
-100*(loan.getMonthlyRepayment()/this.getMonthlyIncome()) $param
-----
+image::image/image-2020-09-01-09-47-12-378.png[]
 +
-image:images/guided_dtable_11.jpg[]
+Choose the fact pattern `loanApplicant` and proceed. Choose the `Field` as `loanPreQualification`.
 +
-We will proceed along the wizard with default values and finally define a Header description.
+image::image/image-2020-09-01-09-48-38-660.png[]
 +
-image:images/guided_dtable_12.jpg[]
+Finally add a header for the column and save.
+. Now, we will add an Attribute column to the table. This will help us define the Rule flow group for this rule.
+Rule flow Group provides a mechanism for grouping and executing rules. We will use this grouping on our process to indicate which rule to execute.
 +
-. Next we will need to create two columns for Max Credit Score and Min Credit Score. `creditScore` is a field in the `Applicant` Object. Follow the pattern we did for defining the Max and Min Loan Amount to define these columns.
-. Now we need to define the _Action_ columns. For this click on _Insert Column_ and choose the value _Set the value of a field_ and hit next.
+For this click on the `Insert Column` button. Check the box for `Include advanced options` and choose `Add an Attribute column` option.
 +
-image:images/guided_dtable_13.jpg[]
+image::image/image-2020-09-01-10-00-30-396.png[]
 +
-We will set the value of `loanPreQualification` in the `Loan` Object. 
+Choose the `Ruleflow-Group` option.
 +
-image:images/guided_dtable_14.jpg[]
+image::image/image-2020-09-01-10-01-41-147.png[]
 +
-Follow along the rest of the field with default values and define a header description.
-. We will define one more field which will provide reason for qualification/disqualification. For this click on _Insert Column_ option and choose the _Insert Column_ option. Choose the field `comment` of the `Loan` Object and proceed. We will define an allowed set of values to provide a pre-filled drop down on the guided decision table editor. 
+Now expand the `Attribute columns` section as shown below. Enter the `Default Value` as `loanPreQualification` and check the box to hide the column.
 +
-----
-"insufficient credit score","sufficient credit score","debt ratio too low","amount too low","amount too high"
-----
+image::image/image-2020-09-01-10-03-44-587.png[]
+
+. Now switch back to the `Model` Tab, you can see the following table setup.
 +
-image:images/guided_dtable_15.jpg[]
-+ 
-Proceed along the editor with default values and define a header for the field and finsih saving the action column definition.
-. We will need to define the _Rule Flow Group_ for the rule definition that we created here. For this, click on _Insert Column_, check the box _Include advanced options_ and and click on _Add an Attribute column_. Select the _Ruleflow-Group_ option and click on _Finish_. Expand the _Attribute Coumns_ and define the value for the `ruleflow-group` as below. 
+image::image/image-2020-09-01-10-20-44-480.png[]
+
+. Let us now fill up the table with values as below. For this choose the `Insert` button.
 +
-image:images/guided_dtable_19.jpg[]
-. Switch back to the Model Tab and finally our table should look like this.
+image::image/image-2020-09-01-10-21-11-802.png[]
 +
-image:images/guided_dtable_16.jpg[]
+image::image/image-2020-09-01-11-30-24-106.png[]
 +
-. We will now enter the values for the decision table. For this click on the Insert button on the top right and click on _Append row_
+If you need to remove any of the cell values which you might have wrongly entered, right click on the cell and click on `Delete Cell`. If you need delete the whole row, select the row and right click to `Delete row(s)`
+
+=== Creating the Group Assignment Decision
+. Now, we will create another Decision table to dynamically determine which agent group to assign the loan approval request to. For this go back to the asset library and click on _Add Asset_ button. Choose the Guided Decision Table option.
 +
-image:images/guided_dtable_21.jpg[]
+For this decision table, we will choose the `Hit Policy` as `First Hit`.
 +
-. Fill in the table values as given below. Notice that for the Reason Column the value is available as a drop down and the Loan Pre Qualification column shows up as check box because of its boolean nature.
+image::image/image-2020-09-01-11-37-52-314.png[]
+. Now let us define the columns. For this click on the `Columns` tab.
 +
-image:images/guided_dtable_17.jpg[scale=135]
+image::image/image-2020-09-01-11-41-58-073.png[]
+. Click on the `Insert Column` button, choose the option for `Add a condition` and click next. As we did earlier we will need to define a Fact pattern. For this click on `Create a new Fact Pattern`.
 +
-. Now Save the decision and click on _Validate_. To test the decision, let us import a _Test Scenario_ which we have created already.
-Download the test file from here.
+image::image/image-2020-09-01-11-52-13-728.png[]
 +
-link:resources/TestPreQualification.scesim[Test Pre Qualification]
+Create the fact pattern as above and proceed. Choose `Calculation type` as `Literal value`. Choose the `Field` as `age` and click on next. We will define the column as `greater than` as shown below.
 +
-Click on the _Import Asset_ and choose this file.
+image::image/image-2020-09-01-11-54-32-433.png[]
 +
-image:images/guided_dtable_18.jpg[]
+Provide a header name for the column and click on save
+. Next let us create the next condition column. For this, click
+on `Insert Column`, choose the fact pattern we created in the earlier step, choose the `Calculation type` as `Literal value`. Choose the `Field` as `residency`. For this we will define the operator as `equals to`
 +
-Now Click on _Test_ to ensure they are no errors.
-Congratulations! We have now created all of the decisions needed for our process flow.
+image::image/image-2020-09-01-11-57-30-226.png[]
+. Next let us define the `Action` column. For this click on `Insert Column` button, choose the option to `Set the value of a field`.
+
++
+image::image/image-2020-09-01-13-40-26-597.png[]
++
+Choose the Fact pattern which we created earlier, choose the `Field` as `loanGroupAssignment`. Provide a header name for the column and save changes.
+
+. Finally we will add an `Attribute` column for defining the Rule flow group. As we did with the previous decision table, click on `Insert Column`, choose the `Include advanced options` checkbox, and choose `Add an attribute column`.
++
+image::image/image-2020-09-01-13-56-29-911.png[]
++
+We will choose the Ruleflow-Group option.
++
+image::image/image-2020-09-01-13-57-07-947.png[]
++
+Expand the `Attribute Columns` and provide a default value for the `ruleflow-group` as below.
++
+image::image/image-2020-09-01-13-58-31-076.png[]
++
+The table should now look like this. Next we will click on the `Insert` button to fill up the table as below.
++
+
+image::image/image-2020-09-01-13-42-52-175.png[]
++
+image::image/image-2020-09-01-13-46-13-210.png[]
+
 
 === Creating the Loan Approval Workflow
 Now that we have created all necessary pieces, we will now define the process. We will be building the following process flow.
 
-image:images/process_complete_1.jpg[]
-
+image::image/image-2020-09-01-13-46-55-172.png[]
 
 . First let us click on the _Add Asset_ button and choose the _Business Process_ type.
 +
-image:images/process_1.jpg[]
+image::image/image-2020-09-01-13-48-06-825.png[]
+
 . When the process designer opens, click on the properties pane to open it up.
-
 +
-image:images/process_designer_pen_aid.jpg[]
+image::image/image-2020-09-01-13-49-23-559.png[]
 +
-
 . Scroll down in the property panel on the right side of the screen, until you see the section _Process Data_.
-. Expand the _Process Data_ section and add the following 3 _Process Variables_ by clicking on the _+_ sign.
-
+. Expand the _Process Data_ section and add the following _Process Variable_ by clicking on the _+_ sign.
 +
 
-image:images/process_2.jpg[]
+image::image/image-2020-09-01-13-50-50-735.png[]
 +
-. Next let us define the steps one by one. We will start off with _Age Pre-Qualification_. For this we will need to choose the _Business Rule_ node. Click on the left side process palette on the Task(Rectangle) option and drag drop the node on to the canvas.
+. Next let us define the steps one by one. First drag drop the start node from the left side pane.
 +
 
-image:images/process_3.jpg[]
+image::image/image-2020-09-01-14-01-07-918.png[]
+
++
+. Next we will define the _Loan Pre-Qualification_ node. For this we will need to choose the _Business Rule_ node. Click on the left side process palette on the Task(Rectangle) option and drag drop the node on to the canvas.
++
+
+image::image/image-2020-09-01-16-37-19-817.png[]
 +
 Now click on the node and edit the properties on the right side pane. We will give it a name and rule flow group as below.
 +
-image:images/process_5.jpg[]
+image::image/image-2020-09-01-16-39-25-906.png[]
 +
-Next we will define the Inputs/Ouputs for the Rule. For this scroll down to the _Data Assignments_ section and click on the Assignments. We will map the `Loan` and the `Applicant` types as input and the `Applicant` as output.
+Next we will define the Inputs/Ouputs for the Rule. For this scroll down to the _Data Assignments_ section and click on the Assignments. We will map the `loanApplicant` as input and the `loanApplicant` as output.
 
 +
-image:images/process_4.jpg[]
+image::image/image-2020-09-01-16-40-53-619.png[]
 +
-Next click on the Green circle(start node) and pull an arrow on to the _Business Rule_ node. To connect click on the node and choose the context help displayed around the node to choose the arrow as shown below.
-+
-image:images/process_12.jpg[]
-
-
-. Next we need to define a gateway to filter only applicants with succesful Age Pre Qualification check. Click on the Rhombus from the process palette(on the left) and choose the Exclusive.
+Next click on the Green circle(start node) and pull an arrow on to the _Business Rule_ node.
 
 +
-image:images/process_6.jpg[]
 
-. Next we will need to invoke the Interest Rate calculation on the Loan data. For this click on the _Task_ node from the process palette(on the left) and choose the _Business Rule_ node. 
+(Note: To connect any node click on the node and choose the context help displayed around the node to choose the arrow.)
+
+
+. Next we need to define a gateway to filter only applicants with succesful Pre Qualification check. Click on the Rhombus from the process palette(on the left) and choose the Exclusive.
+
++
+image::image/image-2020-09-01-16-43-06-573.png[]
+
+. Next we will need to invoke the Loan Group Assignment. For this click on the _Task_ node from the process palette(on the left) and choose the _Business Rule_ node.
 +
 We will edit the name and add the Rule Flow group as below.
 +
-image:images/process_7.jpg[]
+image::image/image-2020-09-01-16-45-29-505.png[]
 +
 We will add the Assignment as we did in the previous step with the following definition.
 +
-image:images/process_8.jpg[]
-. We will also choose the Red circle from the process palette(on the left) and choose the _End_ event. Now we will connect the arrows between the _Age Pre-Qualification_, gateway and the _Interest Calculation_ as below.
+image::image/image-2020-09-01-16-46-34-346.png[]
+. We will also choose the Red circle from the process palette(on the left) and choose the _End_ event. Now we will connect the arrows between the _Loan PreQualification_, gateway and the _Group Assignment_ as below.
 +
-image:images/process_9.jpg[]
+image::image/image-2020-09-01-16-47-55-022.png[]
 +
-We will also need to define the logic for the gateway, for this click on the arrow to the _Interest Rate Calculation_ and expand the _Implementation/Execution_ section. Here we will define the logic as below.
+We will also need to define the logic for the gateway, for this click on the arrow to the _Group Assignment_ and expand the _Implementation/Execution_ section. Here we will define the logic as below.
 +
-image:images/process_11.jpg[]
+image::image/image-2020-09-01-16-48-40-042.png[]
 + 
 Make sure to define the condition on the other path which connects to the _End_ (red circle) as we did in the previous step.
-. Next we need to define the final rule for the Loan Pre Qualification check. Again drag and drop the _Business Rule_ node on the canvas. Edit the name and choose the _Rule flow group_ as `approval-rules`. We will define assignment for the rule as below.
 
-+
-image:images/process_10.jpg[]
-+ 
-Now connect the arrows.
-
-. Next we need to filter out all of the Loan Applications which failed the Pre Qualification. For this we will need to add another gateway. As we did earlier add a _Exclusive_ gateway. We will connect one end of the gateway to the end signal.
-+
-image:images/process_13.jpg[]
 . Last we will define a human task for the Loan Manager approval. For this click on the _Task_ node from the process palette(on the left) and click on the _User_ task. Drag drop the node on to the canvas.
 +
-We will edit the name and add the _Groups_. We will select `Administrators`.
+We will edit the name and add the _Groups_. Add the value as
 +
-image:images/process_14.jpg[]
+```
+#{loanApplicant.loanGroupAssignment}
+```
 +
+image::image/image-2020-09-01-16-50-23-676.png[]
++
+
+image::image/image-2020-09-01-16-52-42-164.png[]
 Next scroll down to the _Assignments_ section and add the following assignment.
 +
-image:images/process_15.jpg[]
-. Finally connect the arrows and define the logic for the XOR gateway as below.
-+
-image:images/process_16.jpg[]
-+
-image:images/process_17.jpg[]
+image::image/image-2020-09-01-16-53-41-853.png[]
+
+. Finally connect the `Loan Approval` task with the end node and connect the arrows.
+image::image/image-2020-09-01-16-54-57-724.png[]
 . Finally click on _Validate_ and it should be succesful.
 
 === Creating the User Forms
@@ -517,291 +391,156 @@ Next we will create User Forms to interact with the human tasks. We will set up 
 
 . For this on the Process editor click on the following option and choose `Generate all Forms`.
 +
-image:images/process_19.jpg[]
+image::image/image-2020-09-01-16-56-01-113.png[]
 +
 This will create a form with all possible values, we will now edit these forms to make sure we have the right fields.
 
-. Go Back to the Asset Library view and filter by Forms. You should now see 4 forms generated.
+. Go Back to the Asset Library view and filter by Forms. You should now see 3 forms generated.
 +
-image:images/process_20.jpg[]
-
+image::image/image-2020-09-01-16-56-47-564.png[]
 +
-The first two forms are generated for the _Data Objects_ that we have for _Applicant_ and _Form_. The third form is a Process start Form(used to kick-start a process) and the last is the User Task form(complete the user task).
-. Now open up the Form com_myspace_loan_approval_Applicant
+. Now open up the Form com_myspace_loan_approval_LoanApplicant
 +
-You can see the various fields possible for an `Applicant`. Let us remove the field `Yearly Income` by clicking on the three dots on the right side of the field. You can also rearrange the fields as you see fit.
+You can see the various fields possible for an `LoanApplicant`. Let us remove the field `Loan Pre Qualification`, `Loan Qualification` and `LoanGroupAssignment` by clicking on the three dots on the right side of the field. You can also rearrange the fields as you see fit.
 +
-image:images/process_21.jpg[]
+image::image/image-2020-09-01-16-59-32-571.png[]
 +
 Save the changes.
-
-. Next let us open up the Form com_myspace_loan_approval_Loan
 +
-You can see the various fields possible for an _Loan. Let us remove the fields `Interest Rate`,`Monthly Repayment`,`Age PreQual`,`Loan PreQualification` and `Monthly Repayment` and `comment` by clicking on the three dots on the right side of the field. You can also rearrange the fields as you see fit.
-+
-image:images/process_22.jpg[]
-. Now we will open up the Process Start Form
-loan-approval.loan-approval-wkflow-taskform
-Let us remove the fields `Approved` and click on _Save_
-
-. Finally let us open up the User Task Form - `Task-taskform` and make sure the fields look up.
+Finally let us open up the User Task Form - `Task-taskform` and make sure the fields look up.
 . Now we are ready to build and deploy the changes. Go back to the asset library and click on _Deploy_. (The Deploy action Builds & Deploys the changes).
 
 === Process Management and Tracking
 . After the build is succesful, click top menu option and choose _Process Definition_.
 +
-image:images/process_24.jpg[]
+
 . We can see the Process Defintion listed, now click on the three dots on the right side of the Process `loan-approval-wkflow`. Click on _Start_
 +
-image:images/process_25.jpg[]
+image::image/image-2020-09-01-17-01-44-193.png[]
 . This should open up the Process Start Form.
 Enter the values for the form and proceed.
 +
-image:images/process_26.jpg[]
+image::image/image-2020-09-02-06-56-14-826.png[]
 
 . We can now see the Process Instance View load up automatically.
 +
-image:images/process_27.jpg[]
+image::image/image-2020-09-02-06-56-44-489.png[]
 +
 Inspect the Process Summary
 
 . Click on the Diagram Tab on the Process Instance View. 
 +
-image:images/process_28.jpg[]
+image::image/image-2020-09-02-06-57-10-037.png[]
 +
 You can see that the completed steps show up in grey color and the current task in progress shows up with a Red outline.
-. The task is assigned for a loan manager approval. If you remember, we assigned the Groups for the task as `Administrators`. By default the user you logged in with should have access to this task. To access this click on the top menu option and choose `Task Inbox`.
-+
-image:images/process_29.jpg[]
-. Task Inbox shows up assigned tasks for the user. In this case we should see one task waiting to be worked on.
-+
-image:images/process_30.jpg[]
-. Since it is assigned to a group, we first need to claim it. Open up the task and click on _Claim_.
 
-
-. Now click on _Start_. We will approve the task by checking the `Approved` check  box. We will click _Complete_.  The task should now be completed. Let us go back to the Process Instance section by clicking the top Menu.
+. Let us now quickly explore the admin options on the `Process Instances` tab.
 +
-image:images/process_31.jpg[]
-
-. Now let us inspect the completed instance by selecting the filter option as below.
+image::image/image-2020-09-02-07-04-18-323.png[]
 +
-image:images/process_32.jpg[]
-. Click on the Process Variables tab and inspect the variables. 
-+
-image:images/process_33.jpg[]
+To start with, you can see that there is a `Filter` section on the left. This section lets us manage the filter criteria for this dashboard. The default filter options based on status, SLAs and Process definition are all mentioned here. This perspective also allows you to create a `New Process Instance`. The table shows the content filtered based on the criteria specified.
 
-.. Since the `Applicant` and the `Loan` objects are custom java objects, it shows up as hashcode string. To display values so that it shows up on the Process Variables meaningfully, we can add a toString() method to the `Loan` object as below. If you make this change, make sure to Deploy the changes and start a new process to see the changes.
-
+. Let us now explore some complex monitoring options. Assuming that, you will need to track SLAs on the process and alert when they breach. For this go back the designer and open up the Process for authoring again.
 +
+image::image/image-2020-09-02-07-10-16-070.png[]
 +
-image:images/process_35.jpg[]
-
-. Finally we will inspect the Diagram tab on the Process Instance View. The path that the process took to completion is represented here.
+On the authoring perspective, as shown above, let us set an SLA. Save, build and deploy the changes.
++
+Let us create a new process instance as we did earlier, with the same input data.
++
+Now go back to the `Manage` perspective and navigate back to the `Process Instance` section. Since, we set the SLA as 2s it will almost immediately go in to the violated state. Let us verify that here. From the left side filter section, select the SLA violation.
++
+image::image/image-2020-09-02-07-15-30-551.png[]
++
+You should see that the SLA violation related results loads up on the right hand side.
+. The `Manage` section also provides for a way to define custom queries on the process data. The following diagram shows how you can setup a custom filter.
++
+image::image/image-2020-09-02-07-17-35-082.png[]
++
+Now let us go back process which we last created, The task is assigned to a loan agent group dynamically at runtime based on the rules we configured. Let us see which group this assignment has been done for. For this click on the `Tasks` option from the `Manager` menu option.
 +
 
-image:images/process_34.jpg[]
-
-=== Interacting with the Kie-Server APIs
-The Execution Server provides a rich RESTful API that allows user to interact with the process engine and deployed processes via a REST.
-This powerful feature allows users to create modern user interface and applications in their technology of choice (e.g. Entando DXP, ReactJS/Redux, AngularJS, etc.) and integrate these applications with the process engine to create modern, process driven, enterprise applications.
-
-The Swagger interface provides the description and documentation of the Execution Server’s RESTful API. At the same time, it allows the APIs to be called from the UI. This enables developers and users to quickly test a,in this case, a deployed business process.
-
-. Navigate to the swagger page. The swagger endpoint is available in the following url:
+image::image/image-2020-09-02-06-58-57-687.png[]
 +
-KIE-Server-URL/docs
-
-. Locate the POST operation for the resource /server/containers/{containerId}/processes/{processId}/instances. This is the RESTful operation with which we can start a new process instance. Expand the operation:
-
+You will now see the task management perspective.
 +
-image:images/swagger_1.jpg[]
-
-. Click on the Try it out button.
-
-.. Set the containerId to `loan-approval_1.0.0-SNAPSHOT`
-.. Set the processId to `loan-approval.loan-approval-wkflow`
-.. Set Parameter content type to `application/json`
-
-.. Set the Response content type to `application/json`
-
-.. Set the  body to:
+image::image/image-2020-09-02-06-59-38-570.png[]
 +
-----
-{
-  "applicant" : {
-    "com.myspace.loan_approval.Applicant" : {
-      "name" : "Mary",
-      "creditScore" : 750,
-      "monthlyIncome" :8000.0,
-      "age": 3
-    }
-  },
-  "loan" : {
-    "com.myspace.loan_approval.Loan" : {
-      "duration" : 7,
-      "amount":34000.0
-    }
-  }
-}
-----
-. Click on Execute. 
+Open up the task, and navigate to the `Assignments` tab.
 +
-image:images/process_36.jpg[]
-
-. Go back to the Business Central workbench. Go the process instances view and inspect the process instance we have just started.
-
-. The RESTful API provides many more operations. Let’s use the API to fetch our Task List and complete the _Loan Manager Approval_ task. In the Swagger API, navigate to the Process queries section. Find the GET operation for the resource /server/queries/tasks/instances/pot-owners. Expand the operation and click on the Try it out button. Click on the Execute button. This will return all the tasks for our user
-. We can see the _Loan Manager Approval_ task that is available in our inbox. Let’s complete this task.
-
-. Go to the Task Instances section in the Swagger interface and locate the PUT operation of the /server/containers/{containerId}/tasks/{taskInstanceId}/states/completed resource. This is the operation with which we can complete a task.
-.. Set the containerId to `loan-approval_1.0.0-SNAPSHOT`
-
-
-.. Set the taskInstanceId to the id of the task instance you want to complete. The task instance id can be found in the list of task instances we got back from our previous REST operation.
-
-
-.. Set auto-progress to true. This controls the auto progression of the taks through the various states of the task lifecycle (i.e. claimed, started, etc.).
-
-
-.. Set the Parameter content type to `application/json`
-
-
-.. Set the Response content type to `application/json`
-.. Set the body to:
-
+image::image/image-2020-09-02-07-01-03-446.png[]
++
+You can see that the task is assigned to `nonResidentGroup` because the customer is a NON RESIDENT.
 +
 
-----
-{
-   "approved":true
-}
-----
-
-+ 
+. Let us now try to change the rule logic which governs this assignment. Go back in to the `Design` perspective and open up the guided decision table `AgentGroupAssignment`.
 +
+image::image/image-2020-09-02-07-21-20-812.png[]
 +
-image:images/process_37.jpg[]
-
-=== Using the Kie-Server Client
-
-Here is a take home assignment for using the Java Client to interact with the Kie-Server.
-
-Red Hat Process Automation Manager provides a KIE-Server Client API that allows the user to interact with the KIE-Server from a Java client using a higher level API. It abstracts the data marshalling and unmarshalling and the creation and execution of the RESTful commands from the developer, allowing him/her to focus on developing business logic.
-
-. In this section we will create a simple Java client for our Loan Approval process.
+Make some changes to the second row, so that we assign NON RESIDENT cases also to the seniorUserAgent. Now save the business rule, build and deploy the changes.
 +
-Create a new Maven Java JAR project in your favourite IDE (e.g. IntelliJ, Eclipse, Visual Studio Code).
+We will now create another process instance using the very same input test data.
 +
-Add the following dependency to your project:
+Now go in to the `Manage` perspective and open up the `Tasks` section. If we inspect the last task created, we can see it has now been assigned to `seniorAgent` instead of `nonResidentGroup`.
 +
-----
-<dependency>
-  <groupId>org.kie.server</groupId>
-  <artifactId>kie-server-client</artifactId>
-  <version>7.30.0.Final</version>
-  <scope>compile</scope>
-</dependency>
-----
 
-. Create a Java package in your src/main/java folder with the name com.myspace.loan_approval.
-
-
-. Download the Applicant.java file from https://github.com/snandakumar87/loan-approval-workshop/blob/master/resources/Applicant.java[this] location and add it to the package you’ve just created.
-
-
-. Download the 'Loan.java' file from https://github.com/snandakumar87/loan-approval-workshop/blob/master/resources/Loan.java[this] location and add it to the package.
-
-
-. Create a new Java class called Main.
+image::image/image-2020-09-02-07-25-06-981.png[]
 +
-Add a public static void main(String[] args) method to your main class.
+. Next let us assume that the group of users are overloaded with work, so we want to make sure the tasks are not in pending state for a long time. For this we want to put some controls in such that, if a tasks is not started by a group until `x` mins/hours we want to ressignment to somebody. Let us now move back to the `Design` Perspective and open up the business process.
 +
-Before we implement our method, we first define a number of constants that we will need when implementing our method (note that the values of your constants can be different depending on your environment, model namespace, etc.):
+
+On the Process, click on the `Loan Approval` task. On the right side pane, expand the `Implementation/Execution` section. Here click on the `Reassignments` section.
 +
-----
-//Kie-server URL
-private static final String KIE_SERVER_URL = "http://localhost:8080/kie-server/services/rest/server";
-private static final String CONTAINER_ID = "loan-approval_1.0.0-SNAPSHOT";
-//PAM username
-private static final String USERNAME = "adminUser";
-//PAM password
-private static final String PASSWORD = "RedHat";
-private static final String PROCESS_ID = "loan-approval.loan-approval-wkflow";`
-----
+image::image/image-2020-09-02-07-30-06-137.png[]
++
+Click on the `Add` button and provide the reassingment strategy as below.
++
+image::image/image-2020-09-02-08-11-17-607.png[]
++
+Click on `Ok`, save changes, build and deploy the project. Now navigate back to the `Manage` perspective and create a process one more time with the same test data.
++
+The process should be created, let us wait a minute and open up the `Task` section on the management perspective.
++
+image::image/image-2020-09-02-08-12-23-258.png[]
++
+You can see that the task has been reassigned. Open up the `Logs` tab to see how the reassignment happened.
++
+image::image/image-2020-09-02-08-13-09-454.png[]
 
-
-. KIE-Server client API classes can mostly be retrieved from the KieServicesFactory class. We first need to create a KieServicesConfiguration instance that will hold our credentials and defines how we want our client to communicate with the server:
+. Next let us look at how an admin can manually delegate tasks. Go back to the `Assignment` section. Now enter the `User` to delegate as `adminUser` and click on delegate.
++
 
 +
-----
-KieServicesConfiguration kieServicesConfig = KieServicesFactory.newRestConfiguration(KIE_SERVER_URL, new EnteredCredentialsProvider(USERNAME, PASSWORD));
-----
+image::image/image-2020-09-02-09-42-27-479.png[]
+You can see the task has been reassigned to `adminUser` now. Also check the `Logs` tab to see the audit log of how the reassignment happened.
 
-
-
-. To allow the KIE-Server Client’s marshaller to marshall and unmarshall instances of our domain model, we need to add our domain model classes to the KieServicesConfiguration.
-
+. Next let us go back to the `Task` dashboard by following the breadcrumb.
 +
-----
-Set<Class<?>> extraClasses = new HashSet<>();
-extraClasses.add(Applicant.class);
-extraClasses.add(Loan.class);
-kieServicesConfig.addExtraClasses(extraClasses);
-
-----
-
-
-. Next, we create the KieServicesClient:
+image::image/image-2020-09-02-09-44-01-553.png[]
 +
-----
-
-KieServicesClient kieServicesClient = KieServicesFactory.newKieServicesClient(kieServicesConfig);
-
-----
-
-
-. From this client we retrieve our ProcessServicesClient:
+You can see that because of the assignment, the `Actual Owner` for the task has been changed to `adminUser` and the task is now in the `Reserved` state.
 +
-----
-ProcessServicesClient processServicesClient = kieServicesClient.getServicesClient(ProcessServicesClient.class);
-----
-
-
-
-. We now create a Map which we will use to pass the process input variables. We create a new Applicant instance and Loan instance and put them in the Map.
+As you can see, the dashboard provides bulk operations on the tasks. This allows us to claim, suspend, start,release tasks.
 +
-----
-Map<String, Object> inputData = new HashMap<>();
-Applicant applicant = new Applicant();
-applicant.setName("Mary");
-applicant.setCreditScore(750);
-applicant.setAge(34);
-applicant.setMonthlyIncome(8000.0);
-inputData.put("applicant", applicant);
+image::image/image-2020-09-02-08-17-24-629.png[]
 
-Loan loan = new Loan();
-loan.setDuration(7);
-loan.setAmount(34000);
-inputData.put("loan", loan);
-
-----
-
-
-. We can now start a new process instance via the ProcessServicesClient.
+=== Task Inbox
+. Task Inbox shows up assigned tasks for the user. This perspective allows the user to work on a task. Lets now login as `adminUser`. Since we reassigned a task to that user, we should be able to see the task waiting on the inbox.
 +
-----
+Click on the top section and choose the `Task Inbox`.
++
+image::image/image-2020-09-02-09-45-45-917.png[]
++
+There should be a task waiting, open it up.
+As you can see the task form shows up.
++
+image::image/image-2020-09-02-09-47-26-921.png[]
++
+You can see that the details section allows for `Priority`  to be changed. This can be used in a reassignment strategy if need be.
++
+Let us now switch back to the `Work` tab, and click on the `Start` button.
++
+image::image/image-2020-09-02-10-18-03-038.png[]
++
+Now you can see additional options to `Complete`. Click on `Complete`. The task should now get completed.
 
-Long processInstanceId = processServicesClient.startProcess(CONTAINER_ID, PROCESS_ID, inputData);
-----
-
-
-
-. Finally, we can print the process instance id to System.out.
-
-
-. System.out.println("New 'Loan Approval' process instance started with instance-id: " + processInstanceId);
-
-
-
-
-. Compile your project and run it. Observe the output in the console, which should say: New 'Loan  Approval' process instance started with instance-id
