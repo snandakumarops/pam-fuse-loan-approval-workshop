@@ -130,7 +130,7 @@ image::image/image-2020-09-01-09-24-30-642.png[]
 
 We can now create the required decisions for our process.
 
-=== Creating the Age Pre-Qualification Decision
+=== Creating the Pre-Qualification Decision
 
 First let us create a simple Pre Qualification decision.
 
