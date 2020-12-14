@@ -343,7 +343,7 @@ In order to define routes more easy and clean, Camel offers several different do
 image::Screenshot from 2020-12-13 22-33-02.png[]
 +
 Notice that the skeleton for the Route has been created. We will now define the route to expose a rest service, which will accept a customer id
-over a `GET` class and invoke the helper bean to get the customer class.
+over a `GET` class and invoke the helper bean to get the customer call. Copy paste the following code snippet in the section marked `\\TODO`
 +
 ```
 rest("/lookup/{custId}")
@@ -637,7 +637,7 @@ image::image/image-2020-09-02-07-25-06-981.png[]
 
 On the Process, click on the `Loan Approval` task. On the right side pane, expand the `Implementation/Execution` section. Here click on the `Reassignments` section.
 +
-image::image-2020-12-14-00-10-57-991.png[]
+
 +
 Click on the `Add` button and provide the reassingment strategy as below.
 +
