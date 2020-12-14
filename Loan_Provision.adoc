@@ -3,19 +3,16 @@
 
 
 == Red Hat Process Automation Manager Workshop
-This workshop is aimed at providing hands on experience on the authoring and management platform for RHPAM. This lab will implement a Loan Approval workflow.
+This workshop is aimed at providing hands on experience on the authoring and management platform for RHPAM. In addition, this lab also provides an introduction to Red Hat Fuse. This lab will implement a Loan Approval workflow.
 
 .Goals
 * Explore Users and Groups Management
+* Create an integration microservice using Red Hat Fuse.
 * Create a simple Loan Approval Workflow
 * Explore Process Admin Operations (Dashboards, SLAs, Assignments, Ressignments)
 * Explore Task Inbox (User Task Approval)
-* Real-Time Process and Task Monitoring
 
-.Prerequisite (Note: the last section of this workshop showcases how the process data can be visualized in a external reporting system like Kibana. If using a local install, you need to connect RHPAM to an elastic instance. Check link:https://developers.redhat.com/blog/2020/05/04/monitor-business-metrics-with-red-hat-process-automation-manager-elasticsearch-and-kibana/[Process Insights with Kibana])
-* Successful completion of the _Environment Setup Lab_
-or
-* An existing, accessible, DM/PAM 7.5+ environment.
+
 
 :numbered:
 
@@ -126,7 +123,7 @@ image::image/image-2020-09-01-08-17-43-292.png[]
 . Add the following fields to the `LoanApplicant` data object by clicking on the `+ add field` button:
 
 +
-image::image/image-2020-09-01-09-24-30-642.png[]
+image::image-2020-12-11-09-16-48-941.png[]
 
 We can now create the required decisions for our process.
 
@@ -141,12 +138,11 @@ We will use the _Guided Decision Table_ asset.
 > . Provide fields and options for acceptable input
 
 . Now go back to the asset library and click on _Add Asset_ button. Choose the Guided Decision Table option.
-
++
+image::image-2020-12-11-09-18-54-558.png[]
 +
 
-> Hit policies determine the order in which rules (rows) in a guided decision table are applied, whether top to bottom, per specified priority, or other options. 
-+
-For this example, we will leave it as the default selection.
+
 +
 Guided Decision tables provide wizard based approach to defining condition and action columns.
 +
@@ -293,13 +289,99 @@ image::image/image-2020-09-01-13-42-52-175.png[]
 +
 image::image/image-2020-09-01-13-46-13-210.png[]
 
+=== Creating the Customer Profile Lookup Service
+Now let us create a simple Fuse service to lookup customer profile information. The service will lookup the Customer Class based on the Customer id.
+We will use link:https://developers.redhat.com/products/codeready-studio/download?extIdCarryOver=true&sc_cid=7013a000002goGYAAY[Red Hat Developer Studio] for creating this service.
+
+. Launch the developer studio from the installed location.
+. We will start with a base project for creating the service. For this we will import
+the project from git.
++
+image::image-2020-12-13-22-13-35-933.png[]
++
+image::Screenshot from 2020-12-13 22-15-52.png[]
++
+We will clone URI from the location
++
+```
+https://github.com/snandakumar87/customer-profile-service
+```
++
+
+image::Screenshot from 2020-12-13 22-17-26.png[]
++
+Follow along the wizard with the default values and the project should start to load up.
+
+. You will notice that the project is a simple maven project with
+spring and Fuse dependencies. Open up the pom.xml to check out the dependencies which have been added. We use
+the BOM for spring and Fuse so that the right libraries for the specified version is pulled in.
+
++
+image::Screenshot from 2020-12-13 22-23-02.png[]
+. Next let us explore the project structure. The source files can be found under /src/main/java.
+RestJavaDslApplication is a simple Spring boot Application class. We will use a simple helper class that enables us to lookup customer class from
+a data source. In this example, for the sake of simplicity we will assume it from a local hashmap. Open up the ProfileLookupBean.java
+
++
+image::Screenshot from 2020-12-13 22-36-16.png[]
+
++
+Notice that we have loaded up a sample hashmap with customer class for 5 users.
+In the section marked `//TODO lookup customer profile` define the following.
++
+```
+String custId = (String) exchange.getIn().getHeader("custId");
+return customerClassMap.get(custId);
+
+```
+Make sure to remove null return from the skeleton implementation. Now that we have a helper class to
+look up the data, let us now define the integration route.
+
+. The UserManagementRoute will be route definition file for defining the integration. Routes contain the flow and logic of integration between different systems.
+In order to define routes more easy and clean, Camel offers several different domain-specific languages (DSL) for programming languages like Java. Open up this clas.
++
+image::Screenshot from 2020-12-13 22-33-02.png[]
++
+Notice that the skeleton for the Route has been created. We will now define the route to expose a rest service, which will accept a customer id
+over a `GET` class and invoke the helper bean to get the customer class.
++
+```
+rest("/lookup/{custId}")
+          .bindingMode(RestBindingMode.json)
+          .get()
+          .produces(MediaType.APPLICATION_JSON_VALUE)
+          .route()
+          .bean(ProfileLookupBean.class,"lookupCustomerClass")
+          .endRest();
+```
++
+Notice how the Java DSL provides a simple builder syntax for creating route definitions.
+
+. We are now all set to build and deploy the code. For this, open up the RestJavaDSLApplication.java class, right click and Run as Java Application.
++
+Now open up a browser with the url
++
+```
+http://localhost:8087/camel-rest/lookup/2
+```
++
+This should result in a response "SILVER". Next let us define our workflow.
+
 
 === Creating the Loan Approval Workflow
 Now that we have created all necessary pieces, we will now define the process. We will be building the following process flow.
 
-image::image/image-2020-09-01-13-46-55-172.png[]
+image::image-2020-12-13-22-51-02-293.png[]
 
-. First let us click on the _Add Asset_ button and choose the _Business Process_ type.
+. Since, we will be invoking a REST service from our business process, we will first need to enable the corresponding Service task to give us that capability. For this, go to the library view, and open up the option for
+`Settings`.
++
+image::image-2020-12-13-22-56-19-561.png[]
++
+Leave the Username/password blank as our service is not secured with authentication.
+
+
+. Go back to the asse library and click on the _Add Asset_ button and choose the _Business Process_ type.
 +
 image::image/image-2020-09-01-13-48-06-825.png[]
 
@@ -311,58 +393,117 @@ image::image/image-2020-09-01-13-49-23-559.png[]
 . Expand the _Process Data_ section and add the following _Process Variable_ by clicking on the _+_ sign.
 +
 
-image::image/image-2020-09-01-13-50-50-735.png[]
+image::image-2020-12-13-22-58-53-289.png[]
 +
 . Next let us define the steps one by one. First drag drop the start node from the left side pane.
 +
 
 image::image/image-2020-09-01-14-01-07-918.png[]
 
+. We will now create the task to invoke the REST service we created. For this open up the palette from the left.
+
 +
+image::image-2020-12-13-23-00-34-446.png[]
++
+Drag and drop the component on the canvas. We will now define the properties, for this click on the hidden property pane on the right.
++
+image::image-2020-12-13-23-02-11-356.png[]
++
+We will define the `Name` as`Lookup Customer Profile`. Click on the `Data Assignments` section to open it up. Click on the pencil icon to open up details.
++
+image::image-2020-12-13-23-04-30-946.png[]
++
+In the input section, We will define the Method as `GET` and the Url as `http://localhost:8087/camel-rest/lookup/#{loanApplicant.customerId}`
+We will leave all other input fields blank. We will map the output Result to the `customerClass` variable that we created earlier.
++
+image::image-2020-12-13-23-06-50-226.png[]
+
+. We will now define an alternate path for PLATINUM customers. We will by pass the approval process. For this
+we will add a gateway that checks for the customer class and skip execution.
++
+image::image-2020-12-13-23-15-12-155.png[]
++
+Now let us add a Script task so that we can mark the execution as complete. For this open up the palette
+from the left and choose the task type as below.
++
+image::image-2020-12-13-23-17-06-052.png[]
++
+We will name this task `Auto Approve`, open up the Implementation/Execution section and add the Script value as below,
++
+```
+kcontext.setVariable("loanApplicant.loanQualification",true);
+```
++
+
+image::image-2020-12-13-23-18-46-708.png[]
++
+Finally we will define a end node to end this part of the flow.
++
+image::image-2020-12-13-23-19-47-766.png[]
++
+Now we will connect all of these nodes using arrows. To connect any node click on the node and choose the context help displayed around the node to choose the arrow.
++
+
+image::image-2020-12-13-23-21-16-905.png[]
++
+The process should look like this.
++
+image::image-2020-12-13-23-22-34-837.png[]
++
+
+
 . Next we will define the _Loan Pre-Qualification_ node. For this we will need to choose the _Business Rule_ node. Click on the left side process palette on the Task(Rectangle) option and drag drop the node on to the canvas.
 +
 
-image::image/image-2020-09-01-16-37-19-817.png[]
+image::image-2020-12-13-23-07-54-495.png[]
 +
 Now click on the node and edit the properties on the right side pane. We will give it a name and rule flow group as below.
 +
-image::image/image-2020-09-01-16-39-25-906.png[]
+image::image-2020-12-13-23-10-55-683.png[]
 +
 Next we will define the Inputs/Ouputs for the Rule. For this scroll down to the _Data Assignments_ section and click on the Assignments. We will map the `loanApplicant` as input and the `loanApplicant` as output.
 
 +
-image::image/image-2020-09-01-16-40-53-619.png[]
+image::image-2020-12-13-23-11-46-571.png[]
 +
-Next click on the Green circle(start node) and pull an arrow on to the _Business Rule_ node.
-
+Next connect the nodes as below.
 +
+image::image-2020-12-13-23-25-55-756.png[]
 
-(Note: To connect any node click on the node and choose the context help displayed around the node to choose the arrow.)
-
+. Now click on the gateway, and define the default path as below.
++
+image::image-2020-12-13-23-26-48-272.png[]
++
+We will also define the path for the Auto approval. For this click on the arrow that connects the gateway to the Auto Approve task. On the Implementation/Execution section,
+define the condition for filtering PLATINUM customers.
++
+image::image-2020-12-13-23-29-06-949.png[]
 
 . Next we need to define a gateway to filter only applicants with succesful Pre Qualification check. Click on the Rhombus from the process palette(on the left) and choose the Exclusive.
 
 +
-image::image/image-2020-09-01-16-43-06-573.png[]
+image::image-2020-12-13-23-30-10-141.png[]
 
 . Next we will need to invoke the Loan Group Assignment. For this click on the _Task_ node from the process palette(on the left) and choose the _Business Rule_ node.
 +
 We will edit the name and add the Rule Flow group as below.
 +
-image::image/image-2020-09-01-16-45-29-505.png[]
+image::image-2020-12-13-23-32-16-127.png[]
 +
 We will add the Assignment as we did in the previous step with the following definition.
 +
-image::image/image-2020-09-01-16-46-34-346.png[]
+image::image-2020-12-13-23-32-46-992.png[]
 . We will also choose the Red circle from the process palette(on the left) and choose the _End_ event. Now we will connect the arrows between the _Loan PreQualification_, gateway and the _Group Assignment_ as below.
 +
-image::image/image-2020-09-01-16-47-55-022.png[]
+image::image-2020-12-13-23-33-32-695.png[]
 +
 We will also need to define the logic for the gateway, for this click on the arrow to the _Group Assignment_ and expand the _Implementation/Execution_ section. Here we will define the logic as below.
 +
-image::image/image-2020-09-01-16-48-40-042.png[]
+image::image-2020-12-13-23-34-23-537.png[]
 + 
-Make sure to define the condition on the other path which connects to the _End_ (red circle) as we did in the previous step.
+We will define the default path for the gateway as End, as below.
++
+image::image-2020-12-13-23-35-58-796.png[]
 
 . Last we will define a human task for the Loan Manager approval. For this click on the _Task_ node from the process palette(on the left) and click on the _User_ task. Drag drop the node on to the canvas.
 +
@@ -372,16 +513,20 @@ We will edit the name and add the _Groups_. Add the value as
 #{loanApplicant.loanGroupAssignment}
 ```
 +
-image::image/image-2020-09-01-16-50-23-676.png[]
+image::image-2020-12-13-23-38-22-425.png[]
++
+image::image-2020-12-13-23-36-47-225.png[]
 +
 
-image::image/image-2020-09-01-16-52-42-164.png[]
 Next scroll down to the _Assignments_ section and add the following assignment.
 +
-image::image/image-2020-09-01-16-53-41-853.png[]
+image::image-2020-12-13-23-38-58-441.png[]
 
 . Finally connect the `Loan Approval` task with the end node and connect the arrows.
-image::image/image-2020-09-01-16-54-57-724.png[]
+
++
+image::image-2020-12-13-23-39-36-641.png[]
+
 . Finally click on _Validate_ and it should be succesful.
 
 === Creating the User Forms
@@ -389,7 +534,7 @@ Next we will create User Forms to interact with the human tasks. We will set up 
 
 . For this on the Process editor click on the following option and choose `Generate all Forms`.
 +
-image::image/image-2020-09-01-16-56-01-113.png[]
+image::image-2020-12-13-23-40-13-100.png[]
 +
 This will create a form with all possible values, we will now edit these forms to make sure we have the right fields.
 
@@ -401,11 +546,11 @@ image::image/image-2020-09-01-16-56-47-564.png[]
 +
 You can see the various fields possible for an `LoanApplicant`. Let us remove the field `Loan Pre Qualification`, `Loan Qualification` and `LoanGroupAssignment` by clicking on the three dots on the right side of the field. You can also rearrange the fields as you see fit.
 +
-image::image/image-2020-09-01-16-59-32-571.png[]
+image::image-2020-12-13-23-43-32-596.png[]
 +
 Save the changes.
 +
-Finally let us open up the User Task Form - `Task-taskform` and make sure the fields look up.
+Finally let us open up the User Task Form - `Task-taskform` and make sure the fields look up. Remove the field name `CustomerClass`, this will come from the service lookup.
 . Now we are ready to build and deploy the changes. Go back to the asset library and click on _Deploy_. (The Deploy action Builds & Deploys the changes).
 
 === Process Management and Tracking
@@ -418,17 +563,17 @@ image::image/image-2020-09-01-17-01-44-193.png[]
 . This should open up the Process Start Form.
 Enter the values for the form and proceed.
 +
-image::image/image-2020-09-02-06-56-14-826.png[]
+image::image-2020-12-13-23-46-48-755.png[]
 
 . We can now see the Process Instance View load up automatically.
 +
-image::image/image-2020-09-02-06-56-44-489.png[]
+image::image-2020-12-13-23-47-10-006.png[]
 +
 Inspect the Process Summary
 
 . Click on the Diagram Tab on the Process Instance View. 
 +
-image::image/image-2020-09-02-06-57-10-037.png[]
+image::image-2020-12-13-23-47-28-660.png[]
 +
 You can see that the completed steps show up in grey color and the current task in progress shows up with a Red outline.
 
@@ -440,7 +585,7 @@ To start with, you can see that there is a `Filter` section on the left. This se
 
 . Let us now explore some complex monitoring options. Assuming that, you will need to track SLAs on the process and alert when they breach. For this go back the designer and open up the Process for authoring again.
 +
-image::image/image-2020-09-02-07-10-16-070.png[]
+image::image-2020-12-13-23-48-26-058.png[]
 +
 On the authoring perspective, as shown above, let us set an SLA. Save, build and deploy the changes.
 +
@@ -453,29 +598,32 @@ image::image/image-2020-09-02-07-15-30-551.png[]
 You should see that the SLA violation related results loads up on the right hand side.
 . The `Manage` section also provides for a way to define custom queries on the process data. The following diagram shows how you can setup a custom filter.
 +
-image::image/image-2020-09-02-07-17-35-082.png[]
+image::image-2020-12-13-23-50-32-798.png[]
 +
 Now let us go back process which we last created, The task is assigned to a loan agent group dynamically at runtime based on the rules we configured. Let us see which group this assignment has been done for. For this click on the `Tasks` option from the `Manager` menu option.
-+
 
++
 image::image/image-2020-09-02-06-58-57-687.png[]
 +
 You will now see the task management perspective.
 +
 image::image/image-2020-09-02-06-59-38-570.png[]
 +
+
+Note: if you cant see the tasks on the Task Management Perspective, it is likely that the user logged in
+does not have the right role. For this open up the file $JBOSS_HOME/standalone/configuration/application-roles.properties and
+add `Administrators` as a role to the logged in user.
++
+
 Open up the task, and navigate to the `Assignments` tab.
 +
 image::image/image-2020-09-02-07-01-03-446.png[]
-+
-You can see that the task is assigned to `nonResidentGroup` because the customer is a NON RESIDENT.
-+
 
 . Let us now try to change the rule logic which governs this assignment. Go back in to the `Design` perspective and open up the guided decision table `AgentGroupAssignment`.
 +
-image::image/image-2020-09-02-07-21-20-812.png[]
+image::image-2020-12-14-00-09-24-804.png[]
 +
-Make some changes to the second row, so that we assign NON RESIDENT cases also to the seniorUserAgent. Now save the business rule, build and deploy the changes.
+Make some changes to the second row, so that we assign RESIDENT cases also to the seniorUserAgent. Now save the business rule, build and deploy the changes.
 +
 We will now create another process instance using the very same input test data.
 +
@@ -489,7 +637,7 @@ image::image/image-2020-09-02-07-25-06-981.png[]
 
 On the Process, click on the `Loan Approval` task. On the right side pane, expand the `Implementation/Execution` section. Here click on the `Reassignments` section.
 +
-image::image/image-2020-09-02-07-30-06-137.png[]
+image::image-2020-12-14-00-10-57-991.png[]
 +
 Click on the `Add` button and provide the reassingment strategy as below.
 +
